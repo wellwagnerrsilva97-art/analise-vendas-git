@@ -1,41 +1,64 @@
 import pandas as pd
-dados_vendas = {'data': ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04'],
-                'Produto': ['notebook', 'mouse', 'teclado', 'monitor'],
-                'Vendas': [100, 150, 200, 250],
-                'quantidade': [10, 15, 20, 25],
-                'preco_unitario': [4000.00, 45.00, 200.00, 3000.00],
-                'vendedores': ['João', 'Maria', 'Pedro', 'Ana']}
+import os
 
-# Criar um DataFrame a partir do dicionário de dados
-df = pd.DataFrame(dados_vendas)
+# ==========================================
+# 1. DEFINE O CAMINHO DO ARQUIVO
+# ==========================================
+# Exemplo CSV:  caminho_arquivo = "vendas.csv"
+# Exemplo Excel: caminho_arquivo = "vendas.xlsx"
+caminho_arquivo = "vendas.xlsx"
 
-# Calcular o total de vendas por produto
-df['total_vendas'] = df['quantidade'] * df['preco_unitario']
+# ==========================================
+# 2. CARREGA OS DADOS
+# ==========================================
+try:
+    if caminho_arquivo.endswith('.csv'):
+        # Se o CSV usar ponto e vírgula como separador (comum no Excel em português), adicione sep=';'
+        df = pd.read_csv(caminho_arquivo, encoding='utf-8')
+    elif caminho_arquivo.endswith(('.xlsx', '.xls')):
+        df = pd.read_excel(caminho_arquivo)
+    else:
+        raise ValueError("Formato de arquivo não suportado!")
+        
+    print(f"Arquivo '{caminho_arquivo}' carregado com sucesso!\n")
 
-#metricas de vendas
-faturamento_geral = df['total_vendas'].sum() #.sum() calcula a soma de todos os valores da coluna 'total_vendas'
-total_itens = df['quantidade'].sum()
-ticket_medio = df['total_vendas'].mean() #.mean() calcula a média de todos os valores da coluna 'total_vendas'
-produto_mais_vendido = df.groupby('Produto')['quantidade'].sum().idxmax() #idxmax() retorna o índice (neste caso, o nome do produto) do valor máximo na série resultante do groupby
+except FileNotFoundError:
+    print(f"Erro: O arquivo '{caminho_arquivo}' não foi encontrado no diretório atual.")
+    exit()
 
-# Agrupamentos 
-fatur_por_produto = df.groupby('Produto')['total_vendas'].sum().sort_values(ascending=False) #.sort_values(ascending=False) ordena os valores em ordem decrescente
-fatur_por_vendedor = df.groupby('vendedores')['total_vendas'].sum().sort_values(ascending=False)
+# ==========================================
+# 3. TRATAMENTO E ANÁLISE DOS DADOS
+# ==========================================
 
-# Relatório de vendas
-print("=" * 40) # print("=" * 40) cria uma linha de separação com 40 caracteres "="
-print("Relatório de Vendas")
-print("=" * 40)
-print(f"Faturamento Geral: R$ {faturamento_geral:.2f}")
-print(f"Total de Itens Vendidos: {total_itens}")
-print(f"Ticket Médio: R$ {ticket_medio:.2f}")
-print(f"Produto Mais Vendido: {produto_mais_vendido}")
-print("=" * 40)
+# Garantir que o nome das colunas corresponda ao seu arquivo real:
+# Ex: 'Quantidade', 'Preco_Unitario', 'Produto', 'Vendedor'
+
+# Se o seu arquivo não tiver uma coluna de Faturamento Total pronta, crie uma:
+if 'Faturamento_Total' not in df.columns:
+    df['Faturamento_Total'] = df['Quantidade'] * df['Preco_Unitario']
+
+# Métricas Principais
+faturamento_geral = df['Faturamento_Total'].sum()
+total_itens = df['Quantidade'].sum()
+ticket_medio = df['Faturamento_Total'].mean()
+
+# Agrupamentos
+fatur_por_produto = df.groupby('Produto')['Faturamento_Total'].sum().sort_values(ascending=False)
+fatur_por_vendedor = df.groupby('Vendedor')['Faturamento_Total'].sum().sort_values(ascending=False)
+
+# ==========================================
+# 4. EXIBIÇÃO DO RELATÓRIO
+# ==========================================
+print("=" * 45)
+print("            RELATÓRIO DE VENDAS")
+print("=" * 45)
+print(f"Faturamento Total   : R$ {faturamento_geral:,.2f}")
+print(f"Total de Itens      : {total_itens:,}")
+print(f"Ticket Médio / Venda: R$ {ticket_medio:,.2f}")
+print("-" * 45)
 
 print("\n--- Faturamento por Produto ---")
-for produto, valor in fatur_por_produto.items():
-    print(f"{produto:<12}: R$ {valor:,.2f}")
+print(fatur_por_produto.map('R$ {:,.2f}'.format).to_string())
 
 print("\n--- Faturamento por Vendedor ---")
-for vendedor, valor in fatur_por_vendedor.items():
-    print(f"{vendedor:<12}: R$ {valor:,.2f}")
+print(fatur_por_vendedor.map('R$ {:,.2f}'.format).to_string())
